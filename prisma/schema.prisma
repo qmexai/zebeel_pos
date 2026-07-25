@@ -1,0 +1,104 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows"]
+}
+
+model Product {
+  id             String        @id @db.VarChar(50) // Holds raw barcode scan string (EAN-13, custom codes).
+  pluCode        String?       @unique @map("plu_code") @db.VarChar(5) // 5-digit short identifier code for Smart Scale mapping.
+  category       String        @default("Others") @db.VarChar(50) // Product category (Grocery, Bakery, etc.)
+  name           String
+  hsnCode        String        @map("hsn_code") @db.VarChar(10)
+  currentStock   Decimal       @map("current_stock") @db.Decimal(10, 3)
+  minThreshold   Decimal       @default(5.000) @map("min_threshold") @db.Decimal(10, 3)
+  costPrice      Decimal       @map("cost_price") @db.Decimal(10, 2)
+  sellingPrice   Decimal       @map("selling_price") @db.Decimal(10, 2) // Retail Price
+  mrp            Decimal       @default(0.00) @map("mrp") @db.Decimal(10, 2) // Maximum Retail Price (MRP)
+  packageWeight  Decimal?      @map("package_weight") @db.Decimal(10, 3)
+  packageUnit    String?       @map("package_unit") @db.VarChar(10)
+  sackKg         Decimal?      @map("sack_kg") @db.Decimal(10, 3)
+  sackRate       Decimal?      @map("sack_rate") @db.Decimal(10, 2)
+  gstRate        Decimal       @map("gst_rate") @db.Decimal(5, 2)
+  taxInclusive   Boolean           @default(true) @map("tax_inclusive")
+  invoiceItems   InvoiceItem[]
+  stockLogs      StockHistoryLog[] // Stock history log relation
+
+  @@index([id])
+  @@index([pluCode])
+  @@map("products")
+}
+
+model Invoice {
+  id            String        @id @db.VarChar(50) // Formatted sequential invoice identifier (e.g., ZB-2026-00001).
+  timestamp     DateTime      @default(now()) @db.Timestamp()
+  customerPhone String?       @map("customer_phone") @db.VarChar(15)
+  customerGstin String?       @map("customer_gstin") @db.VarChar(15)
+  subtotal      Decimal       @db.Decimal(10, 2)
+  totalCgst     Decimal       @map("total_cgst") @db.Decimal(10, 2)
+  totalSgst     Decimal       @map("total_sgst") @db.Decimal(10, 2)
+  discount      Decimal       @default(0.00) @db.Decimal(10, 2)
+  grandTotal    Decimal       @map("grand_total") @db.Decimal(10, 2)
+  paymentMode   String        @map("payment_mode") @db.VarChar(20) // Enum array check ('CASH', 'CARD', 'UPI')
+  items         InvoiceItem[]
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id         Int      @id @default(autoincrement())
+  invoiceId  String   @map("invoice_id") @db.VarChar(50)
+  productId  String   @map("product_id") @db.VarChar(50)
+  quantity   Decimal  @db.Decimal(10, 3)
+  rate       Decimal  @db.Decimal(10, 2) // Immutable snapshot of product selling price at transaction moment.
+  cgstAmount Decimal  @map("cgst_amount") @db.Decimal(10, 2)
+  sgstAmount Decimal  @map("sgst_amount") @db.Decimal(10, 2)
+  rowTotal   Decimal  @map("row_total") @db.Decimal(10, 2)
+  invoice    Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id])
+
+  @@map("invoice_items")
+}
+
+// Supplier Ledger tracking
+model Supplier {
+  id             Int               @id @default(autoincrement())
+  name           String
+  phone          String?           @db.VarChar(15)
+  gstin          String?           @db.VarChar(15)
+  transactions   SupplierLedger[]
+
+  @@map("suppliers")
+}
+
+model SupplierLedger {
+  id             Int      @id @default(autoincrement())
+  supplierId     Int      @map("supplier_id")
+  timestamp      DateTime @default(now())
+  description    String
+  purchaseAmount Decimal  @default(0.00) @map("purchase_amount") @db.Decimal(10, 2)
+  paidAmount     Decimal  @default(0.00) @map("paid_amount") @db.Decimal(10, 2)
+  supplier       Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@map("supplier_ledger")
+}
+
+model StockHistoryLog {
+  id            Int      @id @default(autoincrement())
+  productId     String   @map("product_id") @db.VarChar(50)
+  quantityAdded Decimal  @map("quantity_added") @db.Decimal(10, 3)
+  previousStock Decimal  @map("previous_stock") @db.Decimal(10, 3)
+  newStock      Decimal  @map("new_stock") @db.Decimal(10, 3)
+  sourceType    String   @map("source_type") @db.VarChar(50) // 'MANUAL_ENTRY', 'SUPPLIER_INBOUND', 'STOCK_ADJUSTMENT'
+  referenceNote String?  @map("reference_note")
+  timestamp     DateTime @default(now()) @db.Timestamp()
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("stock_history_logs")
+}
+

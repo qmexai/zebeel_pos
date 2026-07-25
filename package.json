@@ -1,0 +1,71 @@
+{
+  "name": "zebeel-pos",
+  "version": "1.0.0",
+  "description": "Offline-First POS System for Zabeel Supermarket",
+  "main": "dist/main/main/main.js",
+  "scripts": {
+    "dev:frontend": "vite",
+    "build:frontend": "vite build",
+    "build:backend": "tsc -p tsconfig.main.json",
+    "build": "npm run build:frontend && npm run build:backend",
+    "start": "electron .",
+    "dev": "concurrently \"npm run dev:frontend\" \"tsc -p tsconfig.main.json -w\" \"wait-on http://localhost:5173 && electron .\"",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "build:win": "npm run build && electron-builder --win"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.15.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "lucide-react": "^0.395.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.18.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.14.2",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "autoprefixer": "^10.4.19",
+    "concurrently": "^8.2.2",
+    "electron": "^30.1.0",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.4.38",
+    "prisma": "^5.15.0",
+    "tailwindcss": "^3.4.3",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11",
+    "wait-on": "^7.0.0"
+  },
+  "build": {
+    "appId": "com.zabeel.pos",
+    "productName": "ZabeelPOS",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/main/**/*",
+      "dist/renderer/**/*",
+      "package.json",
+      "settings.json",
+      "prisma/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": null
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "runAfterFinish": true
+    }
+  }
+}

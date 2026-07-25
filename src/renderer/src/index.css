@@ -1,0 +1,199 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+}
+
+/* Global light theme variables overrides */
+body {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Override background colors of dark components */
+.bg-slate-950, 
+.bg-slate-900, 
+.bg-slate-950\/50, 
+.bg-slate-950\/40, 
+.bg-slate-950\/60, 
+.bg-slate-900\/80,
+section.bg-slate-950 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* Sidebar and dark panel adjustments */
+aside, .bg-slate-950\/40, .bg-slate-900\/60, .bg-slate-950\/60 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.glass-panel {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 4px 12px 0 rgba(15, 23, 42, 0.04) !important;
+  color: #0f172a !important;
+}
+
+.glass-panel-glow {
+  background: #ffffff !important;
+  border: 1px solid #bfdbfe !important;
+  box-shadow: 0 8px 30px 0 rgba(15, 23, 42, 0.06), 0 0 12px 0 rgba(37, 99, 235, 0.04) !important;
+}
+
+/* Text color contrast adaptations */
+.text-slate-100, 
+.text-slate-200, 
+.text-slate-300, 
+.text-slate-350, 
+.text-white {
+  color: #0f172a !important;
+}
+
+.text-slate-400, 
+.text-slate-450, 
+.text-slate-500, 
+.text-slate-550, 
+.text-slate-650 {
+  color: #475569 !important;
+}
+
+/* Border lines color mapping */
+.border-slate-900, 
+.border-slate-800, 
+.border-slate-850, 
+.border-slate-700 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Forms, inputs and selects */
+input, select, textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 1px #2563eb !important;
+}
+
+/* Table rows styling */
+table {
+  border-collapse: separate;
+  border-spacing: 0 6px;
+}
+
+tr.table-row-hover {
+  transition: all 0.15s ease;
+  background-color: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+}
+
+tr.table-row-hover:hover {
+  transform: translateY(-0.5px);
+  background-color: #f8fafc !important;
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Functional colors optimization for light background readability */
+.text-blue-400, .text-blue-300 {
+  color: #1d4ed8 !important; /* dark blue */
+}
+
+.text-emerald-400, .text-emerald-500 {
+  color: #047857 !important; /* dark green */
+}
+
+.bg-blue-600\/10 {
+  background-color: rgba(37, 99, 235, 0.08) !important;
+  color: #2563eb !important;
+}
+
+.bg-amber-500\/10 {
+  background-color: rgba(217, 119, 6, 0.09) !important;
+  color: #b45309 !important;
+}
+
+.bg-red-500\/10, .bg-red-950\/40 {
+  background-color: rgba(220, 38, 38, 0.08) !important;
+  color: #b91c1c !important;
+}
+
+/* Header text gradient compatibility */
+.bg-gradient-to-r {
+  background-image: linear-gradient(to right, #1e3a8a, #2563eb) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* Scrollbars styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Animations */
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(0.995);
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 4s infinite ease-in-out;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-float {
+  animation: float 5s infinite ease-in-out;
+}

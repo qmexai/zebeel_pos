@@ -10,8 +10,14 @@ export const ScaleSync: React.FC<ScaleSyncProps> = ({ apiBase }) => {
   const [scalePrefix, setScalePrefix] = useState('22');
   const [syncing, setSyncing] = useState(false);
   const [pingStatus, setPingStatus] = useState<'idle' | 'pinging' | 'online' | 'offline'>('idle');
-  const [syncLogs, setSyncLogs] = useState<string[]>([]);
+  const [syncLogs, setSyncLogs] = useState<{ time: string; msg: string }[]>([]);
   const [scaleIpConfigured, setScaleIpConfigured] = useState('192.168.1.100');
+
+  const addLog = (msg: string) => {
+    const time = new Date().toLocaleTimeString();
+    setSyncLogs((prev) => [{ time, msg }, ...prev]);
+  };
+
 
   useEffect(() => {
     // Fetch settings to initialize state
@@ -43,35 +49,48 @@ export const ScaleSync: React.FC<ScaleSyncProps> = ({ apiBase }) => {
           body: JSON.stringify(updated),
         });
         setScaleIpConfigured(scaleIp);
-        setSyncLogs((prev) => [`[CONFIG] Saved Scale settings. Target Scale IP: ${scaleIp}, Scale Barcode Prefix: ${scalePrefix}`, ...prev]);
+        addLog(`[CONFIG] Saved Scale settings. Target Scale IP: ${scaleIp}, Scale Barcode Prefix: ${scalePrefix}`);
       }
     } catch (err) {
       console.error(err);
+      addLog('[CONFIG] Error: Failed to save settings.');
     }
   };
 
-  const testPingScale = () => {
+
+  const testPingScale = async () => {
     setPingStatus('pinging');
-    setSyncLogs((prev) => [`[PING] ICMP echo request sent to ${scaleIpConfigured}...`, ...prev]);
-    
-    // Mock latency and ping outcome
-    setTimeout(() => {
-      // Simulate scale availability based on IP pattern
-      const isOnline = scaleIpConfigured.startsWith('192.168.');
-      setPingStatus(isOnline ? 'online' : 'offline');
-      setSyncLogs((prev) => [
-        isOnline 
-          ? `[PING] ICMP response received from ${scaleIpConfigured}. TTL=64, time=8.5ms (ONLINE)`
-          : `[PING] Connection timed out for ${scaleIpConfigured} (OFFLINE)`,
-        ...prev
-      ]);
-    }, 1500);
+    addLog(`[PING] Sending ICMP echo request to ${scaleIpConfigured}...`);
+    try {
+      const start = Date.now();
+      const res = await fetch(`${apiBase}/api/scale/ping`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ip: scaleIpConfigured }),
+      });
+      const elapsed = Date.now() - start;
+      if (res.ok) {
+        const data = await res.json();
+        if (data.online) {
+          setPingStatus('online');
+          addLog(`[PING] ICMP response received from ${scaleIpConfigured}. time=${elapsed}ms (ONLINE)`);
+        } else {
+          setPingStatus('offline');
+          addLog(`[PING] Connection timed out for ${scaleIpConfigured} (OFFLINE) — Check scale IP and network.`);
+        }
+      } else {
+        setPingStatus('offline');
+        addLog(`[PING] Ping request failed. Server error. (${res.status})`);
+      }
+    } catch (err) {
+      setPingStatus('offline');
+      addLog(`[PING] Could not reach backend server. Is the POS server running?`);
+    }
   };
 
   const triggerPluBroadcast = async () => {
     setSyncing(true);
-    setSyncLogs((prev) => [`[SYNC] Preparing PLU lookup tables from Zabeel master catalog...`, ...prev]);
-    
+    addLog(`[SYNC] Preparing PLU lookup tables from Zabeel master catalog...`);
     try {
       const res = await fetch(`${apiBase}/api/scale/sync`, {
         method: 'POST',
@@ -79,20 +98,19 @@ export const ScaleSync: React.FC<ScaleSyncProps> = ({ apiBase }) => {
 
       if (res.ok) {
         const data = await res.json();
-        setSyncLogs((prev) => [
-          `[SYNC] Broadcast success: Updated ${data.broadcastedPluCount} products. Broadcast payload sent to ${data.scaleIp}`,
-          `[SYNC] TCP Connection established with scale on port 5001. Packets transmitted successfully.`,
-          ...prev
-        ]);
+        addLog(`[SYNC] Broadcast success: Updated ${data.broadcastedPluCount} products. Broadcast payload sent to ${data.scaleIp}`);
+        addLog(`[SYNC] TCP Connection established with scale on port 5001. Packets transmitted successfully.`);
       } else {
-        throw new Error('Broadcast endpoint failed');
+        const err = await res.json().catch(() => ({ message: 'Unknown error' }));
+        addLog(`[SYNC] Broadcast failed: ${err.message || 'Server returned error.'}`);
       }
     } catch (err: any) {
-      setSyncLogs((prev) => [`[SYNC] Critical Error: Broadcasting packet lost. Scale is offline.`, ...prev]);
+      addLog(`[SYNC] Critical Error: Could not reach backend server. Is Express running?`);
     } finally {
       setSyncing(false);
     }
   };
+
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -209,8 +227,8 @@ export const ScaleSync: React.FC<ScaleSyncProps> = ({ apiBase }) => {
             ) : (
               syncLogs.map((log, index) => (
                 <div key={index} className="leading-relaxed border-l-2 border-slate-800 pl-2 py-0.5">
-                  <span className="text-slate-600 font-mono select-none">[{new Date().toLocaleTimeString()}] </span>
-                  {log}
+                  <span className="text-slate-600 font-mono select-none">[{log.time}] </span>
+                  {log.msg}
                 </div>
               ))
             )}

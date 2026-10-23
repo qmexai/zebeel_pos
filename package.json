@@ -50,22 +50,35 @@
     "files": [
       "dist/main/**/*",
       "dist/renderer/**/*",
-      "package.json",
-      "settings.json",
-      "prisma/**/*",
-      "node_modules/**/*"
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "prisma",
+        "to": "prisma"
+      },
+      {
+        "from": "node_modules/.prisma/client",
+        "to": "node_modules/.prisma/client"
+      }
+    ],
+    "asarUnpack": [
+      "node_modules/.prisma/**",
+      "**/*.node"
     ],
     "win": {
       "target": [
         "nsis"
       ],
-      "icon": null
+      "artifactName": "ZabeelPOS-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "runAfterFinish": true
+      "runAfterFinish": true,
+      "installerIcon": null,
+      "uninstallerIcon": null
     }
   }
 }

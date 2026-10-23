@@ -7,6 +7,8 @@ import { calculateEan13Checksum } from '../shared/barcodeGen';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
+import { app as electronApp } from 'electron';
+
 
 const app = express();
 app.use(cors());
@@ -32,7 +34,32 @@ export function getLocalIpAddress(): string {
 let scanQueue: string[] = [];
 
 // Settings Path
-const SETTINGS_FILE = path.join(process.cwd(), 'settings.json');
+// In packaged app, use userData dir (AppData/Roaming) so we can write settings
+// In dev mode, use process.cwd() so the file stays in the project root
+function getSettingsPath(): string {
+  try {
+    // electronApp.getPath('userData') works in packaged app
+    return path.join(electronApp.getPath('userData'), 'settings.json');
+  } catch {
+    // Fallback for non-Electron context (e.g., direct node testing)
+    return path.join(process.cwd(), 'settings.json');
+  }
+}
+const SETTINGS_FILE = getSettingsPath();
+
+// Also check the legacy cwd location to migrate settings on first run
+function migrateSettingsIfNeeded() {
+  const legacyPath = path.join(process.cwd(), 'settings.json');
+  if (!fs.existsSync(SETTINGS_FILE) && fs.existsSync(legacyPath)) {
+    try {
+      fs.copyFileSync(legacyPath, SETTINGS_FILE);
+      console.log('[Settings] Migrated settings.json to userData directory');
+    } catch (err) {
+      console.error('[Settings] Migration failed:', err);
+    }
+  }
+}
+
 
 // Default Settings
 interface AppSettings {
@@ -804,6 +831,55 @@ app.get('/api/gst/report', async (req, res) => {
 });
 
 // 8. Weighing Scale PLU broadcast (mock network broadcast)
+// Ping the scale device using a real TCP socket connection test
+app.post('/api/scale/ping', async (req, res) => {
+  const { ip } = req.body;
+  const targetIp = ip || activeSettings.scaleIp;
+
+  if (!targetIp) {
+    return res.status(400).json({ online: false, message: 'No IP address provided' });
+  }
+
+  const net = require('net');
+  const PING_PORT = 5001; // Default scale TCP port
+  const TIMEOUT_MS = 3000;
+
+  const testResult = await new Promise<boolean>((resolve) => {
+    const socket = new net.Socket();
+    let resolved = false;
+
+    socket.setTimeout(TIMEOUT_MS);
+
+    socket.on('connect', () => {
+      if (!resolved) { resolved = true; resolve(true); }
+      socket.destroy();
+    });
+
+    socket.on('error', () => {
+      if (!resolved) { resolved = true; resolve(false); }
+      socket.destroy();
+    });
+
+    socket.on('timeout', () => {
+      if (!resolved) { resolved = true; resolve(false); }
+      socket.destroy();
+    });
+
+    try {
+      socket.connect(PING_PORT, targetIp);
+    } catch {
+      if (!resolved) { resolved = true; resolve(false); }
+    }
+  });
+
+  res.json({
+    online: testResult,
+    ip: targetIp,
+    port: PING_PORT,
+    message: testResult ? `Scale at ${targetIp}:${PING_PORT} is reachable.` : `Cannot reach ${targetIp}:${PING_PORT}. Check scale IP, power, and network.`,
+  });
+});
+
 app.post('/api/scale/sync', async (req, res) => {
   try {
     const products = await prisma.product.findMany({
@@ -1211,8 +1287,20 @@ let serverInstance: any;
 
 export function startServer() {
   if (!serverInstance) {
-    serverInstance = app.listen(PORT, () => {
+    // Migrate settings from old location if needed
+    migrateSettingsIfNeeded();
+
+    // Listen on 0.0.0.0 so Wi-Fi scanner on mobile phones can connect
+    serverInstance = app.listen(PORT, '0.0.0.0', () => {
       console.log(`POS API backend running at http://localhost:${PORT}`);
+      console.log(`Wi-Fi scanner accessible at http://${getLocalIpAddress()}:${PORT}/scanner`);
+    });
+
+    serverInstance.on('error', (err: any) => {
+      console.error('[Server] Failed to start Express server:', err.message);
+      if (err.code === 'EADDRINUSE') {
+        console.error(`[Server] Port ${PORT} is already in use. Change serverPort in settings.`);
+      }
     });
   }
   return serverInstance;
